@@ -7,6 +7,7 @@ import numpy as np
 from progress.bar import Bar
 import time
 import torch
+import pickle
 
 from external.nms import soft_nms
 from models.decode import ctdet_decode
@@ -20,11 +21,21 @@ from .base_detector import BaseDetector
 class CtdetDetector(BaseDetector):
   def __init__(self, opt):
     super(CtdetDetector, self).__init__(opt)
-  
+    self.corner_store_root = '/media/ridhwan/41b91e9e-9e35-4b55-9fd9-5c569c51d214/detection_datasets/hm/'
+    self.store_distance = 5
+
   def process(self, images, return_time=False):
     with torch.no_grad():
       output = self.model(images)[-1]
-      hm = output['hm'].sigmoid_()
+      # import pickle
+      # corner_hm = pickle.load( open( "/home/ridhwan/cornercenternet/save.p", "rb" ) )
+      # corner_hm = torch.nn.functional.interpolate(corner_hm,tuple([128,128]), mode="bicubic")
+      # print(type(corner_hm), corner_hm.shape)
+      # output['hm'] = corner_hm
+      pickle_id = ((self.store_distance - 1) - (self.centernet_img_id%self.store_distance)) + self.centernet_img_id
+      corner_file = pickle.load(open( "{0}cornercenternethm_{1}.p".format(self.corner_store_root, pickle_id), "rb" ) )
+      hm = corner_file['nms_hm'][self.centernet_img_id % 5].unsqueeze(0)
+      # hm = output['hm'].sigmoid_()
       wh = output['wh']
       reg = output['reg'] if self.opt.reg_offset else None
       if self.opt.flip_test:
@@ -34,7 +45,7 @@ class CtdetDetector(BaseDetector):
       torch.cuda.synchronize()
       forward_time = time.time()
       dets = ctdet_decode(hm, wh, reg=reg, K=self.opt.K)
-      
+
     if return_time:
       return output, dets, forward_time
     else:
@@ -76,12 +87,42 @@ class CtdetDetector(BaseDetector):
       img = ((img * self.std + self.mean) * 255).astype(np.uint8)
       pred = debugger.gen_colormap(output['hm'][i].detach().cpu().numpy())
       debugger.add_blend_img(img, pred, 'pred_hm_{:.1f}'.format(scale))
-      debugger.add_img(img, img_id='out_pred_{:.1f}'.format(scale))
-      for k in range(len(dets[i])):
-        if detection[i, k, 4] > self.opt.center_thresh:
-          debugger.add_coco_bbox(detection[i, k, :4], detection[i, k, -1],
-                                 detection[i, k, 4], 
-                                 img_id='out_pred_{:.1f}'.format(scale))
+      pickle_id = ((self.store_distance - 1) - (self.centernet_img_id%self.store_distance)) + self.centernet_img_id
+      corner_file = pickle.load(open( "{0}cornercenternethm_{1}.p".format(self.corner_store_root, pickle_id), "rb" ) )
+      # img1 = pickle.load( open( "/home/ridhwan/cornercenternet/image.p", "rb" ) )
+      # print(self.centernet_img_id)
+      # print(type(corner_file['img']), len(corner_file['img']))
+      if corner_file['img']:
+        corner_img = corner_file['img'][self.centernet_img_id % 5]
+        corner_img = corner_img.cpu().numpy().transpose(1,2,0)
+        corner_img = ((corner_img * self.std + self.mean) * 255).astype(np.uint8)
+      else:
+        corner_img = img
+
+      # corner_hm = corner_file['hm'][self.centernet_img_id].sigmoid_()
+      # corner_hm = corner_hm.cpu().numpy().squeeze()
+      corner_hm = corner_file['nms_hm'][self.centernet_img_id % 5].detach().cpu().numpy()
+      # corner_hm = corner_hm.cpu().numpy().squeeze()
+
+      from skimage.measure import compare_ssim as ssim
+      # import numpy as np
+      # print(img2.shape, corner_img.shape)
+      # print(img2.max(), corner_img.max())
+      # print("comparing the images: ", )
+      assert ssim(img, corner_img, multichannel=True) >= 0.999
+
+
+      # img = img.cpu().numpy().transpose(0,2,3,1).squeeze()
+
+
+      corner_hm = debugger.gen_colormap(corner_hm, output_res=(corner_img.shape[0], corner_img.shape[1]))
+      debugger.add_blend_img(corner_img, corner_hm, 'corner_hm_{:.1f}'.format(scale))
+      # debugger.add_img(img, img_id='out_pred_{:.1f}'.format(scale))
+      # for k in range(len(dets[i])):
+      #   if detection[i, k, 4] > self.opt.center_thresh:
+      #     debugger.add_coco_bbox(detection[i, k, :4], detection[i, k, -1],
+      #                            detection[i, k, 4],
+      #                            img_id='out_pred_{:.1f}'.format(scale))
 
   def show_results(self, debugger, image, results):
     debugger.add_img(image, img_id='ctdet')

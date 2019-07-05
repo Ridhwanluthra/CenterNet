@@ -7,7 +7,7 @@ import cv2
 from .ddd_utils import compute_box_3d, project_to_image, draw_box_3d
 
 class Debugger(object):
-  def __init__(self, ipynb=False, theme='black', 
+  def __init__(self, ipynb=False, theme='black',
                num_classes=-1, dataset=None, down_ratio=4):
     self.ipynb = ipynb
     if not self.ipynb:
@@ -26,17 +26,17 @@ class Debugger(object):
       self.names = ['p']
       self.num_class = 1
       self.num_joints = 17
-      self.edges = [[0, 1], [0, 2], [1, 3], [2, 4], 
-                    [3, 5], [4, 6], [5, 6], 
-                    [5, 7], [7, 9], [6, 8], [8, 10], 
-                    [5, 11], [6, 12], [11, 12], 
+      self.edges = [[0, 1], [0, 2], [1, 3], [2, 4],
+                    [3, 5], [4, 6], [5, 6],
+                    [5, 7], [7, 9], [6, 8], [8, 10],
+                    [5, 11], [6, 12], [11, 12],
                     [11, 13], [13, 15], [12, 14], [14, 16]]
-      self.ec = [(255, 0, 0), (0, 0, 255), (255, 0, 0), (0, 0, 255), 
+      self.ec = [(255, 0, 0), (0, 0, 255), (255, 0, 0), (0, 0, 255),
                  (255, 0, 0), (0, 0, 255), (255, 0, 255),
                  (255, 0, 0), (255, 0, 0), (0, 0, 255), (0, 0, 255),
                  (255, 0, 0), (0, 0, 255), (255, 0, 255),
                  (255, 0, 0), (255, 0, 0), (0, 0, 255), (0, 0, 255)]
-      self.colors_hp = [(255, 0, 255), (255, 0, 0), (0, 0, 255), 
+      self.colors_hp = [(255, 0, 255), (255, 0, 0), (0, 0, 255),
         (255, 0, 0), (0, 0, 255), (255, 0, 0), (0, 0, 255),
         (255, 0, 0), (0, 0, 255), (255, 0, 0), (0, 0, 255),
         (255, 0, 0), (0, 0, 255), (255, 0, 0), (0, 0, 255),
@@ -72,17 +72,17 @@ class Debugger(object):
     if revert_color:
       img = 255 - img
     self.imgs[img_id] = img.copy()
-  
+
   def add_mask(self, mask, bg, imgId = 'default', trans = 0.8):
     self.imgs[imgId] = (mask.reshape(
       mask.shape[0], mask.shape[1], 1) * 255 * trans + \
       bg * (1 - trans)).astype(np.uint8)
-  
+
   def show_img(self, pause = False, imgId = 'default'):
     cv2.imshow('{}'.format(imgId), self.imgs[imgId])
     if pause:
       cv2.waitKey()
-  
+
   def add_blend_img(self, back, fore, img_id='blend', trans=0.7):
     if self.theme == 'white':
       fore = 255 - fore
@@ -113,7 +113,7 @@ class Debugger(object):
     return color_map
     '''
 
-  
+
   def gen_colormap(self, img, output_res=None):
     img = img.copy()
     c, h, w = img.shape[0], img.shape[1], img.shape[2]
@@ -127,7 +127,7 @@ class Debugger(object):
     color_map = (img * colors).max(axis=2).astype(np.uint8)
     color_map = cv2.resize(color_map, (output_res[0], output_res[1]))
     return color_map
-    
+
   '''
   # slow
   def gen_colormap_hp(self, img, output_res=None):
@@ -159,7 +159,7 @@ class Debugger(object):
     return color_map
 
 
-  def add_rect(self, rect1, rect2, c, conf=1, img_id='default'): 
+  def add_rect(self, rect1, rect2, c, conf=1, img_id='default'):
     cv2.rectangle(
       self.imgs[img_id], (rect1[0], rect1[1]), (rect2[0], rect2[1]), c, 2)
     if conf < 1:
@@ -168,7 +168,7 @@ class Debugger(object):
       cv2.circle(self.imgs[img_id], (rect1[0], rect2[1]), int(10 * conf), c, 1)
       cv2.circle(self.imgs[img_id], (rect2[0], rect1[1]), int(10 * conf), c, 1)
 
-  def add_coco_bbox(self, bbox, cat, conf=1, show_txt=True, img_id='default'): 
+  def add_coco_bbox(self, bbox, cat, conf=1, show_txt=True, img_id='default'):
     bbox = np.array(bbox, dtype=np.int32)
     # cat = (int(cat) + 1) % 80
     cat = int(cat)
@@ -185,10 +185,10 @@ class Debugger(object):
       cv2.rectangle(self.imgs[img_id],
                     (bbox[0], bbox[1] - cat_size[1] - 2),
                     (bbox[0] + cat_size[0], bbox[1] - 2), c, -1)
-      cv2.putText(self.imgs[img_id], txt, (bbox[0], bbox[1] - 2), 
+      cv2.putText(self.imgs[img_id], txt, (bbox[0], bbox[1] - 2),
                   font, 0.5, (0, 0, 0), thickness=1, lineType=cv2.LINE_AA)
 
-  def add_coco_hp(self, points, img_id='default'): 
+  def add_coco_hp(self, points, img_id='default'):
     points = np.array(points, dtype=np.int32).reshape(self.num_joints, 2)
     for j in range(self.num_joints):
       cv2.circle(self.imgs[img_id],
@@ -205,7 +205,7 @@ class Debugger(object):
     for i in range(num_classes):
       for j in range(len(points[i])):
         c = self.colors[i, 0, 0]
-        cv2.circle(self.imgs[img_id], (points[i][j][0] * self.down_ratio, 
+        cv2.circle(self.imgs[img_id], (points[i][j][0] * self.down_ratio,
                                        points[i][j][1] * self.down_ratio),
                    5, (255, 255, 255), -1)
         cv2.circle(self.imgs[img_id], (points[i][j][0] * self.down_ratio,
@@ -235,7 +235,7 @@ class Debugger(object):
 
   def save_img(self, imgId='default', path='./cache/debug/'):
     cv2.imwrite(path + '{}.png'.format(imgId), self.imgs[imgId])
-    
+
   def save_all_imgs(self, path='./cache/debug/', prefix='', genID=False):
     if genID:
       try:
@@ -273,7 +273,7 @@ class Debugger(object):
     return pt.astype(np.int32)
 
   def add_ct_detection(
-    self, img, dets, show_box=False, show_txt=True, 
+    self, img, dets, show_box=False, show_txt=True,
     center_thresh=0.5, img_id='det'):
     # dets: max_preds x 5
     self.imgs[img_id] = img.copy()
@@ -289,7 +289,7 @@ class Debugger(object):
               bbox = np.array([x - w / 2, y - h / 2, x + w / 2, y + h / 2],
                               dtype=np.float32)
               self.add_coco_bbox(
-                bbox, cat - 1, dets[cat][i, 2], 
+                bbox, cat - 1, dets[cat][i, 2],
                 show_txt=show_txt, img_id=img_id)
     else:
       for i in range(len(dets)):
@@ -309,11 +309,11 @@ class Debugger(object):
 
 
   def add_3d_detection(
-    self, image_or_path, dets, calib, show_txt=False, 
+    self, image_or_path, dets, calib, show_txt=False,
     center_thresh=0.5, img_id='det'):
     if isinstance(image_or_path, np.ndarray):
       self.imgs[img_id] = image_or_path
-    else: 
+    else:
       self.imgs[img_id] = cv2.imread(image_or_path)
     for cat in dets:
       for i in range(len(dets[cat])):
@@ -358,7 +358,7 @@ class Debugger(object):
       [self.imgs[img_id], self.imgs[bev]], axis=1)
 
   def add_2d_detection(
-    self, img, dets, show_box=False, show_txt=True, 
+    self, img, dets, show_box=False, show_txt=True,
     center_thresh=0.5, img_id='det'):
     self.imgs[img_id] = img
     for cat in dets:
@@ -367,7 +367,7 @@ class Debugger(object):
         if dets[cat][i, -1] > center_thresh:
           bbox = dets[cat][i, 1:5]
           self.add_coco_bbox(
-            bbox, cat - 1, dets[cat][i, -1], 
+            bbox, cat - 1, dets[cat][i, -1],
             show_txt=show_txt, img_id=img_id)
 
   def add_bird_view(self, dets, center_thresh=0.3, img_id='bird'):
@@ -398,7 +398,7 @@ class Debugger(object):
     alpha = 0.5
     bird_view = np.ones((self.out_size, self.out_size, 3), dtype=np.uint8) * 230
     for ii, (dets, lc, cc) in enumerate(
-      [(dets_gt, (12, 49, 250), (0, 0, 255)), 
+      [(dets_gt, (12, 49, 250), (0, 0, 255)),
        (dets_dt, (250, 152, 12), (255, 0, 0))]):
       # cc = np.array(lc, dtype=np.uint8).reshape(1, 1, 3)
       for cat in dets:
@@ -436,8 +436,8 @@ gta_class_name = [
   'p', 'v'
 ]
 
-pascal_class_name = ["aeroplane", "bicycle", "bird", "boat", "bottle", "bus", 
-  "car", "cat", "chair", "cow", "diningtable", "dog", "horse", "motorbike", 
+pascal_class_name = ["aeroplane", "bicycle", "bird", "boat", "bottle", "bus",
+  "car", "cat", "chair", "cow", "diningtable", "dog", "horse", "motorbike",
   "person", "pottedplant", "sheep", "sofa", "train", "tvmonitor"]
 
 coco_class_name = [

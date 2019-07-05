@@ -68,7 +68,7 @@ def _neg_loss(pred, gt):
 
 def _not_faster_neg_loss(pred, gt):
     pos_inds = gt.eq(1).float()
-    neg_inds = gt.lt(1).float()    
+    neg_inds = gt.lt(1).float()
     num_pos  = pos_inds.float().sum()
     neg_weights = torch.pow(1 - gt, 4)
 
@@ -89,8 +89,8 @@ def _slow_reg_loss(regr, gt_regr, mask):
 
     regr    = regr[mask]
     gt_regr = gt_regr[mask]
-    
-    regr_loss = nn.functional.smooth_l1_loss(regr, gt_regr, size_average=False)
+
+    regr_loss = nn.functional.smooth_l1_loss(regr, gt_regr, reduction='sum')
     regr_loss = regr_loss / (num + 1e-4)
     return regr_loss
 
@@ -106,8 +106,8 @@ def _reg_loss(regr, gt_regr, mask):
 
   regr = regr * mask
   gt_regr = gt_regr * mask
-    
-  regr_loss = nn.functional.smooth_l1_loss(regr, gt_regr, size_average=False)
+
+  regr_loss = nn.functional.smooth_l1_loss(regr, gt_regr, reduction='sum')
   regr_loss = regr_loss / (num + 1e-4)
   return regr_loss
 
@@ -130,7 +130,7 @@ class RegLoss(nn.Module):
   '''
   def __init__(self):
     super(RegLoss, self).__init__()
-  
+
   def forward(self, output, mask, ind, target):
     pred = _tranpose_and_gather_feat(output, ind)
     loss = _reg_loss(pred, target, mask)
@@ -139,45 +139,45 @@ class RegLoss(nn.Module):
 class RegL1Loss(nn.Module):
   def __init__(self):
     super(RegL1Loss, self).__init__()
-  
+
   def forward(self, output, mask, ind, target):
     pred = _tranpose_and_gather_feat(output, ind)
     mask = mask.unsqueeze(2).expand_as(pred).float()
     # loss = F.l1_loss(pred * mask, target * mask, reduction='elementwise_mean')
-    loss = F.l1_loss(pred * mask, target * mask, size_average=False)
+    loss = F.l1_loss(pred * mask, target * mask, reduction='sum')
     loss = loss / (mask.sum() + 1e-4)
     return loss
 
 class NormRegL1Loss(nn.Module):
   def __init__(self):
     super(NormRegL1Loss, self).__init__()
-  
+
   def forward(self, output, mask, ind, target):
     pred = _tranpose_and_gather_feat(output, ind)
     mask = mask.unsqueeze(2).expand_as(pred).float()
     # loss = F.l1_loss(pred * mask, target * mask, reduction='elementwise_mean')
     pred = pred / (target + 1e-4)
     target = target * 0 + 1
-    loss = F.l1_loss(pred * mask, target * mask, size_average=False)
+    loss = F.l1_loss(pred * mask, target * mask, reduction='sum')
     loss = loss / (mask.sum() + 1e-4)
     return loss
 
 class RegWeightedL1Loss(nn.Module):
   def __init__(self):
     super(RegWeightedL1Loss, self).__init__()
-  
+
   def forward(self, output, mask, ind, target):
     pred = _tranpose_and_gather_feat(output, ind)
     mask = mask.float()
     # loss = F.l1_loss(pred * mask, target * mask, reduction='elementwise_mean')
-    loss = F.l1_loss(pred * mask, target * mask, size_average=False)
+    loss = F.l1_loss(pred * mask, target * mask, reduction='sum')
     loss = loss / (mask.sum() + 1e-4)
     return loss
 
 class L1Loss(nn.Module):
   def __init__(self):
     super(L1Loss, self).__init__()
-  
+
   def forward(self, output, mask, ind, target):
     pred = _tranpose_and_gather_feat(output, ind)
     mask = mask.unsqueeze(2).expand_as(pred).float()
@@ -187,7 +187,7 @@ class L1Loss(nn.Module):
 class BinRotLoss(nn.Module):
   def __init__(self):
     super(BinRotLoss, self).__init__()
-  
+
   def forward(self, output, mask, ind, rotbin, rotres):
     pred = _tranpose_and_gather_feat(output, ind)
     loss = compute_rot_loss(pred, rotbin, rotres, mask)
@@ -203,7 +203,7 @@ def compute_bin_loss(output, target, mask):
     return F.cross_entropy(output, target, reduction='elementwise_mean')
 
 def compute_rot_loss(output, target_bin, target_res, mask):
-    # output: (B, 128, 8) [bin1_cls[0], bin1_cls[1], bin1_sin, bin1_cos, 
+    # output: (B, 128, 8) [bin1_cls[0], bin1_cls[1], bin1_sin, bin1_cos,
     #                 bin2_cls[0], bin2_cls[1], bin2_sin, bin2_cos]
     # target_bin: (B, 128, 2) [bin1_cls, bin2_cls]
     # target_res: (B, 128, 2) [bin1_res, bin2_res]
