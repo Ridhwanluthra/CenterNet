@@ -10,6 +10,7 @@ import cv2
 import numpy as np
 import time
 from progress.bar import Bar
+from tqdm import tqdm
 import torch
 
 from external.nms import soft_nms
@@ -66,7 +67,8 @@ def prefetch_test(opt):
   bar = Bar('{}'.format(opt.exp_id), max=num_iters)
   time_stats = ['tot', 'load', 'pre', 'net', 'dec', 'post', 'merge']
   avg_time_stats = {t: AverageMeter() for t in time_stats}
-  for ind, (img_id, pre_processed_images) in enumerate(data_loader):
+  # for ind, (img_id, pre_processed_images) in enumerate(data_loader):
+  for ind, (img_id, pre_processed_images) in enumerate(tqdm(data_loader)):
     ret = detector.run(pre_processed_images, centernet_img_id=ind)
     results[img_id.numpy().astype(np.int32)[0]] = ret['results']
     Bar.suffix = '[{0}/{1}]|Tot: {total:} |ETA: {eta:} '.format(

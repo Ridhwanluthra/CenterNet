@@ -21,7 +21,7 @@ from .base_detector import BaseDetector
 class CtdetDetector(BaseDetector):
   def __init__(self, opt):
     super(CtdetDetector, self).__init__(opt)
-    self.corner_store_root = '/media/ridhwan/41b91e9e-9e35-4b55-9fd9-5c569c51d214/detection_datasets/hm/'
+    self.corner_store_root = '/home/ridhwan/storage/ridhwan/hm/'
     self.store_distance = 5
 
   def process(self, images, return_time=False):
@@ -34,7 +34,8 @@ class CtdetDetector(BaseDetector):
       # output['hm'] = corner_hm
       pickle_id = ((self.store_distance - 1) - (self.centernet_img_id%self.store_distance)) + self.centernet_img_id
       corner_file = pickle.load(open( "{0}cornercenternethm_{1}.p".format(self.corner_store_root, pickle_id), "rb" ) )
-      hm = corner_file['nms_hm'][self.centernet_img_id % 5].unsqueeze(0)
+      # hm = corner_file['nms_hm'][self.centernet_img_id % 5].unsqueeze(0)
+      hm = corner_file['hm'][self.centernet_img_id % 5].unsqueeze(0).sigmoid_()
       # hm = output['hm'].sigmoid_()
       wh = output['wh']
       reg = output['reg'] if self.opt.reg_offset else None
