@@ -7,6 +7,7 @@ import numpy as np
 from progress.bar import Bar
 import time
 import torch
+import pickle
 
 from models.model import create_model, load_model
 from utils.image import get_affine_transform
@@ -34,6 +35,7 @@ class BaseDetector(object):
     self.opt = opt
     self.pause = True
     self.centernet_img_id = None
+    self.for_pickle = {'hm': [], 'nms_hm': []}
 
   def pre_process(self, image, scale, meta=None):
     height, width = image.shape[0:2]
@@ -116,7 +118,13 @@ class BaseDetector(object):
       pre_time += pre_process_time - scale_start_time
       # print(images.shape)
       output, dets, forward_time = self.process(images, return_time=True)
-      # print("This is my heat - ", type(output["hm"]), output['hm'].shape)
+      self.for_pickle['hm'].append(output['hm'])
+
+      if (self.centernet_img_id+1)%5 == 0:
+        print('\nstoring pickle', self.centernet_img_id)
+        print(len(self.for_pickle['hm']), len(self.for_pickle['nms_hm']))
+        pickle.dump(self.for_pickle, open("{0}centernethm_{1}.p".format(self.hm_store_root, self.centernet_img_id), "wb" ) )
+        self.for_pickle = {'hm': [], 'nms_hm': []}
 
       torch.cuda.synchronize()
       net_time += forward_time - pre_process_time

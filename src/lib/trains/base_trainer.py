@@ -77,7 +77,7 @@ class BaseTrainer(object):
 
       # print(model_with_loss)
       # make_dot(loss, params=dict(list(model_with_loss.named_parameters()))).view()
-      # hl.build_graph(model_with_loss, torch.zeros([1, 3, 384, 384]))
+      # hl.build_graph(model_with_l*oss, torch.zeros([1, 3, 384, 384]))
       # print(batch["input"].shape)
       torch.jit.get_trace_graph(model_with_loss, (list(batch.values()), batch))
       # hl.build_graph(model_with_loss, batch)

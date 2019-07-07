@@ -45,7 +45,7 @@ class CTDetDataset(data.Dataset):
     else:
       s = max(img.shape[0], img.shape[1]) * 1.0
       input_h, input_w = self.opt.input_h, self.opt.input_w
-    
+
     flipped = False
     if self.split == 'train':
       if not self.opt.not_rand_crop:
@@ -60,16 +60,16 @@ class CTDetDataset(data.Dataset):
         c[0] += s * np.clip(np.random.randn()*cf, -2*cf, 2*cf)
         c[1] += s * np.clip(np.random.randn()*cf, -2*cf, 2*cf)
         s = s * np.clip(np.random.randn()*sf + 1, 1 - sf, 1 + sf)
-      
+
       if np.random.random() < self.opt.flip:
         flipped = True
         img = img[:, ::-1, :]
         c[0] =  width - c[0] - 1
-        
+
 
     trans_input = get_affine_transform(
       c, s, 0, [input_w, input_h])
-    inp = cv2.warpAffine(img, trans_input, 
+    inp = cv2.warpAffine(img, trans_input,
                          (input_w, input_h),
                          flags=cv2.INTER_LINEAR)
     inp = (inp.astype(np.float32) / 255.)
@@ -91,7 +91,7 @@ class CTDetDataset(data.Dataset):
     reg_mask = np.zeros((self.max_objs), dtype=np.uint8)
     cat_spec_wh = np.zeros((self.max_objs, num_classes * 2), dtype=np.float32)
     cat_spec_mask = np.zeros((self.max_objs, num_classes * 2), dtype=np.uint8)
-    
+
     draw_gaussian = draw_msra_gaussian if self.opt.mse_loss else \
                     draw_umich_gaussian
 
@@ -123,19 +123,19 @@ class CTDetDataset(data.Dataset):
         cat_spec_mask[k, cls_id * 2: cls_id * 2 + 2] = 1
         if self.opt.dense_wh:
           draw_dense_reg(dense_wh, hm.max(axis=0), ct_int, wh[k], radius)
-        gt_det.append([ct[0] - w / 2, ct[1] - h / 2, 
+        gt_det.append([ct[0] - w / 2, ct[1] - h / 2,
                        ct[0] + w / 2, ct[1] + h / 2, 1, cls_id])
-    
+
     ret = {'input': inp, 'hm': hm, 'reg_mask': reg_mask, 'ind': ind, 'wh': wh}
     if self.opt.dense_wh:
       hm_a = hm.max(axis=0, keepdims=True)
       dense_wh_mask = np.concatenate([hm_a, hm_a], axis=0)
       ret.update({'dense_wh': dense_wh, 'dense_wh_mask': dense_wh_mask})
       del ret['wh']
-    elif self.opt.cat_spec_wh:
+    elif self.opt.cat_spec_wh: # not using this
       ret.update({'cat_spec_wh': cat_spec_wh, 'cat_spec_mask': cat_spec_mask})
       del ret['wh']
-    if self.opt.reg_offset:
+    if self.opt.reg_offset: # always doing this
       ret.update({'reg': reg})
     if self.opt.debug > 0 or not self.split == 'train':
       gt_det = np.array(gt_det, dtype=np.float32) if len(gt_det) > 0 else \

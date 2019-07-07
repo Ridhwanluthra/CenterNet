@@ -116,7 +116,7 @@ def fill_up_weights(up):
             w[0, 0, i, j] = \
                 (1 - math.fabs(i / f - c)) * (1 - math.fabs(j / f - c))
     for c in range(1, w.size(0)):
-        w[c, 0, :, :] = w[0, 0, :, :] 
+        w[c, 0, :, :] = w[0, 0, :, :]
 
 def fill_fc_weights(layers):
     for m in layers.modules():
@@ -152,23 +152,25 @@ class PoseResNet(nn.Module):
             [4, 4, 4],
         )
 
+        # Centernet spesific ops?
         for head in self.heads:
             classes = self.heads[head]
+            # sanity check?
             if head_conv > 0:
                 fc = nn.Sequential(
-                  nn.Conv2d(64, head_conv,
+                    nn.Conv2d(64, head_conv,
                     kernel_size=3, padding=1, bias=True),
-                  nn.ReLU(inplace=True),
-                  nn.Conv2d(head_conv, classes, 
-                    kernel_size=1, stride=1, 
+                    nn.ReLU(inplace=True),
+                    nn.Conv2d(head_conv, classes,
+                    kernel_size=1, stride=1,
                     padding=0, bias=True))
                 if 'hm' in head:
                     fc[-1].bias.data.fill_(-2.19)
                 else:
                     fill_fc_weights(fc)
             else:
-                fc = nn.Conv2d(64, classes, 
-                  kernel_size=1, stride=1, 
+                fc = nn.Conv2d(64, classes,
+                  kernel_size=1, stride=1,
                   padding=0, bias=True)
                 if 'hm' in head:
                     fc.bias.data.fill_(-2.19)
@@ -218,11 +220,11 @@ class PoseResNet(nn.Module):
                 self._get_deconv_cfg(num_kernels[i], i)
 
             planes = num_filters[i]
-            fc = DCN(self.inplanes, planes, 
+            fc = DCN(self.inplanes, planes,
                     kernel_size=(3,3), stride=1,
                     padding=1, dilation=1, deformable_groups=1)
             # fc = nn.Conv2d(self.inplanes, planes,
-            #         kernel_size=3, stride=1, 
+            #         kernel_size=3, stride=1,
             #         padding=1, dilation=1, bias=False)
             # fill_fc_weights(fc)
             up = nn.ConvTranspose2d(
@@ -286,5 +288,6 @@ def get_pose_net(num_layers, heads, head_conv=256):
   block_class, layers = resnet_spec[num_layers]
 
   model = PoseResNet(block_class, layers, heads, head_conv=head_conv)
+  # print(model)
   model.init_weights(num_layers)
   return model

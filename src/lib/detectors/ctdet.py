@@ -19,24 +19,23 @@ from utils.debugger import Debugger
 from .base_detector import BaseDetector
 
 class CtdetDetector(BaseDetector):
-  def __init__(self, opt):
+  def __init__(self, opt, hm_store_root):
     super(CtdetDetector, self).__init__(opt)
-    self.corner_store_root = '/home/ridhwan/storage/ridhwan/hm/'
+    # self.corner_store_root = '/home/ridhwan/storage/ridhwan/hm/'
+    # self.corner_store_root = '/media/ridhwan/41b91e9e-9e35-4b55-9fd9-5c569c51d214/detection_datasets/hm/'
+    self.hm_store_root = hm_store_root
     self.store_distance = 5
 
   def process(self, images, return_time=False):
     with torch.no_grad():
       output = self.model(images)[-1]
-      # import pickle
-      # corner_hm = pickle.load( open( "/home/ridhwan/cornercenternet/save.p", "rb" ) )
-      # corner_hm = torch.nn.functional.interpolate(corner_hm,tuple([128,128]), mode="bicubic")
-      # print(type(corner_hm), corner_hm.shape)
-      # output['hm'] = corner_hm
-      pickle_id = ((self.store_distance - 1) - (self.centernet_img_id%self.store_distance)) + self.centernet_img_id
-      corner_file = pickle.load(open( "{0}cornercenternethm_{1}.p".format(self.corner_store_root, pickle_id), "rb" ) )
+
+      # pickle_id = ((self.store_distance - 1) - (self.centernet_img_id%self.store_distance)) + self.centernet_img_id
+      # corner_file = pickle.load(open( "{0}centernethm_{1}.p".format(self.corner_store_root, pickle_id), "rb" ) )
       # hm = corner_file['nms_hm'][self.centernet_img_id % 5].unsqueeze(0)
-      hm = corner_file['hm'][self.centernet_img_id % 5].unsqueeze(0).sigmoid_()
-      # hm = output['hm'].sigmoid_()
+      # hm = corner_file['hm'][self.centernet_img_id % 5].unsqueeze(0).sigmoid_()
+
+      hm = output['hm'].sigmoid_()
       wh = output['wh']
       reg = output['reg'] if self.opt.reg_offset else None
       if self.opt.flip_test:

@@ -50,35 +50,51 @@ def prefetch_test(opt):
 
   Dataset = dataset_factory[opt.dataset]
   opt = opts().update_dataset_info_and_set_heads(opt, Dataset)
-  print(opt)
   Logger(opt)
   Detector = detector_factory[opt.task]
 
   split = 'val' if not opt.trainval else 'test'
   dataset = Dataset(opt, split)
-  detector = Detector(opt)
+  if opt.task == 'ctdet':
+    storage_root = '/media/ridhwan/41b91e9e-9e35-4b55-9fd9-5c569c51d214/detection_datasets/hm_center/'
+    # storage_root = '/home/ridhwan/storage/ridhwan/hm_center/'
+    detector = Detector(opt, storage_root)
+  else:
+    detector = Detector(opt)
 
   data_loader = torch.utils.data.DataLoader(
     PrefetchDataset(opt, dataset, detector.pre_process),
     batch_size=1, shuffle=False, num_workers=1, pin_memory=True)
 
   results = {}
-  num_iters = len(dataset)
-  bar = Bar('{}'.format(opt.exp_id), max=num_iters)
-  time_stats = ['tot', 'load', 'pre', 'net', 'dec', 'post', 'merge']
-  avg_time_stats = {t: AverageMeter() for t in time_stats}
+  # num_iters = len(dataset)
+  # bar = Bar('{}'.format(opt.exp_id), max=num_iters)
+  # time_stats = ['tot', 'load', 'pre', 'net', 'dec', 'post', 'merge']
+  # avg_time_stats = {t: AverageMeter() for t in time_stats}
   # for ind, (img_id, pre_processed_images) in enumerate(data_loader):
+  from glob import glob
+  # check how many already stored
+  hm_files = glob('{}*.p'.format(storage_root))
+  if hm_files:
+      for i, each in enumerate(hm_files):
+          hm_files[i] = int(each.split('/')[-1].split('_')[-1][:-2])
+      hm_files = max(hm_files)
+  else:
+      hm_files = -1
+
   for ind, (img_id, pre_processed_images) in enumerate(tqdm(data_loader)):
+    if ind <= hm_files:
+      continue
     ret = detector.run(pre_processed_images, centernet_img_id=ind)
     results[img_id.numpy().astype(np.int32)[0]] = ret['results']
-    Bar.suffix = '[{0}/{1}]|Tot: {total:} |ETA: {eta:} '.format(
-                   ind, num_iters, total=bar.elapsed_td, eta=bar.eta_td)
-    for t in avg_time_stats:
-      avg_time_stats[t].update(ret[t])
-      Bar.suffix = Bar.suffix + '|{} {tm.val:.3f}s ({tm.avg:.3f}s) '.format(
-        t, tm = avg_time_stats[t])
-    bar.next()
-  bar.finish()
+  #   Bar.suffix = '[{0}/{1}]|Tot: {total:} |ETA: {eta:} '.format(
+  #                  ind, num_iters, total=bar.elapsed_td, eta=bar.eta_td)
+  #   for t in avg_time_stats:
+  #     avg_time_stats[t].update(ret[t])
+  #     Bar.suffix = Bar.suffix + '|{} {tm.val:.3f}s ({tm.avg:.3f}s) '.format(
+  #       t, tm = avg_time_stats[t])
+  #   bar.next()
+  # bar.finish()
   dataset.run_eval(results, opt.save_dir)
 
 def test(opt):

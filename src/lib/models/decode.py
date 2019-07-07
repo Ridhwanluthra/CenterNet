@@ -18,33 +18,33 @@ def _left_aggregate(heat):
     '''
         heat: batchsize x channels x h x w
     '''
-    shape = heat.shape 
+    shape = heat.shape
     heat = heat.reshape(-1, heat.shape[3])
     heat = heat.transpose(1, 0).contiguous()
     ret = heat.clone()
     for i in range(1, heat.shape[0]):
         inds = (heat[i] >= heat[i - 1])
         ret[i] += ret[i - 1] * inds.float()
-    return (ret - heat).transpose(1, 0).reshape(shape) 
+    return (ret - heat).transpose(1, 0).reshape(shape)
 
 def _right_aggregate(heat):
     '''
         heat: batchsize x channels x h x w
     '''
-    shape = heat.shape 
+    shape = heat.shape
     heat = heat.reshape(-1, heat.shape[3])
     heat = heat.transpose(1, 0).contiguous()
     ret = heat.clone()
     for i in range(heat.shape[0] - 2, -1, -1):
         inds = (heat[i] >= heat[i +1])
         ret[i] += ret[i + 1] * inds.float()
-    return (ret - heat).transpose(1, 0).reshape(shape) 
+    return (ret - heat).transpose(1, 0).reshape(shape)
 
 def _top_aggregate(heat):
     '''
         heat: batchsize x channels x h x w
     '''
-    heat = heat.transpose(3, 2) 
+    heat = heat.transpose(3, 2)
     shape = heat.shape
     heat = heat.reshape(-1, heat.shape[3])
     heat = heat.transpose(1, 0).contiguous()
@@ -58,7 +58,7 @@ def _bottom_aggregate(heat):
     '''
         heat: batchsize x channels x h x w
     '''
-    heat = heat.transpose(3, 2) 
+    heat = heat.transpose(3, 2)
     shape = heat.shape
     heat = heat.reshape(-1, heat.shape[3])
     heat = heat.transpose(1, 0).contiguous()
@@ -91,7 +91,7 @@ def _topk(scores, K=40):
 '''
 def _topk_channel(scores, K=40):
       batch, cat, height, width = scores.size()
-      
+
       topk_scores, topk_inds = torch.topk(scores.view(batch, cat, -1), K)
 
       topk_inds = topk_inds % (height * width)
@@ -102,13 +102,13 @@ def _topk_channel(scores, K=40):
 
 def _topk(scores, K=40):
     batch, cat, height, width = scores.size()
-      
+
     topk_scores, topk_inds = torch.topk(scores.view(batch, cat, -1), K)
 
     topk_inds = topk_inds % (height * width)
     topk_ys   = (topk_inds / width).int().float()
     topk_xs   = (topk_inds % width).int().float()
-      
+
     topk_score, topk_ind = torch.topk(topk_scores.view(batch, -1), K)
     topk_clses = (topk_ind / K).int()
     topk_inds = _gather_feat(
@@ -120,8 +120,8 @@ def _topk(scores, K=40):
 
 
 def agnex_ct_decode(
-    t_heat, l_heat, b_heat, r_heat, ct_heat, 
-    t_regr=None, l_regr=None, b_regr=None, r_regr=None, 
+    t_heat, l_heat, b_heat, r_heat, ct_heat,
+    t_regr=None, l_regr=None, b_regr=None, r_regr=None,
     K=40, scores_thresh=0.1, center_thresh=0.1, aggr_weight=0.0, num_dets=1000
 ):
     batch, cat, height, width = t_heat.size()
@@ -133,19 +133,19 @@ def agnex_ct_decode(
     r_heat  = torch.sigmoid(r_heat)
     ct_heat = torch.sigmoid(ct_heat)
     '''
-    if aggr_weight > 0: 
+    if aggr_weight > 0:
       t_heat = _h_aggregate(t_heat, aggr_weight=aggr_weight)
       l_heat = _v_aggregate(l_heat, aggr_weight=aggr_weight)
       b_heat = _h_aggregate(b_heat, aggr_weight=aggr_weight)
       r_heat = _v_aggregate(r_heat, aggr_weight=aggr_weight)
-      
+
     # perform nms on heatmaps
     t_heat = _nms(t_heat)
     l_heat = _nms(l_heat)
     b_heat = _nms(b_heat)
     r_heat = _nms(r_heat)
-      
-      
+
+
     t_heat[t_heat > 1] = 1
     l_heat[l_heat > 1] = 1
     b_heat[b_heat > 1] = 1
@@ -155,9 +155,9 @@ def agnex_ct_decode(
     l_scores, l_inds, _, l_ys, l_xs = _topk(l_heat, K=K)
     b_scores, b_inds, _, b_ys, b_xs = _topk(b_heat, K=K)
     r_scores, r_inds, _, r_ys, r_xs = _topk(r_heat, K=K)
-      
+
     ct_heat_agn, ct_clses = torch.max(ct_heat, dim=1, keepdim=True)
-      
+
     # import pdb; pdb.set_trace()
 
     t_ys = t_ys.view(batch, K, 1, 1, 1).expand(batch, K, K, K, K)
@@ -239,7 +239,7 @@ def agnex_ct_decode(
         b_ys = b_ys + 0.5
         r_xs = r_xs + 0.5
         r_ys = r_ys + 0.5
-      
+
     bboxes = torch.stack((l_xs, t_ys, r_xs, b_ys), dim=5)
     bboxes = bboxes.view(batch, -1, 4)
     bboxes = _gather_feat(bboxes, inds)
@@ -265,14 +265,14 @@ def agnex_ct_decode(
     r_ys = _gather_feat(r_ys, inds).float()
 
 
-    detections = torch.cat([bboxes, scores, t_xs, t_ys, l_xs, l_ys, 
+    detections = torch.cat([bboxes, scores, t_xs, t_ys, l_xs, l_ys,
                             b_xs, b_ys, r_xs, r_ys, clses], dim=2)
 
     return detections
 
 def exct_decode(
-    t_heat, l_heat, b_heat, r_heat, ct_heat, 
-    t_regr=None, l_regr=None, b_regr=None, r_regr=None, 
+    t_heat, l_heat, b_heat, r_heat, ct_heat,
+    t_regr=None, l_regr=None, b_regr=None, r_regr=None,
     K=40, scores_thresh=0.1, center_thresh=0.1, aggr_weight=0.0, num_dets=1000
 ):
     batch, cat, height, width = t_heat.size()
@@ -284,18 +284,18 @@ def exct_decode(
     ct_heat = torch.sigmoid(ct_heat)
     '''
 
-    if aggr_weight > 0:   
+    if aggr_weight > 0:
       t_heat = _h_aggregate(t_heat, aggr_weight=aggr_weight)
       l_heat = _v_aggregate(l_heat, aggr_weight=aggr_weight)
       b_heat = _h_aggregate(b_heat, aggr_weight=aggr_weight)
       r_heat = _v_aggregate(r_heat, aggr_weight=aggr_weight)
-      
+
     # perform nms on heatmaps
     t_heat = _nms(t_heat)
     l_heat = _nms(l_heat)
     b_heat = _nms(b_heat)
     r_heat = _nms(r_heat)
-      
+
     t_heat[t_heat > 1] = 1
     l_heat[l_heat > 1] = 1
     b_heat[b_heat > 1] = 1
@@ -391,7 +391,7 @@ def exct_decode(
         b_ys = b_ys + 0.5
         r_xs = r_xs + 0.5
         r_ys = r_ys + 0.5
-      
+
     bboxes = torch.stack((l_xs, t_ys, r_xs, b_ys), dim=5)
     bboxes = bboxes.view(batch, -1, 4)
     bboxes = _gather_feat(bboxes, inds)
@@ -417,7 +417,7 @@ def exct_decode(
     r_ys = _gather_feat(r_ys, inds).float()
 
 
-    detections = torch.cat([bboxes, scores, t_xs, t_ys, l_xs, l_ys, 
+    detections = torch.cat([bboxes, scores, t_xs, t_ys, l_xs, l_ys,
                             b_xs, b_ys, r_xs, r_ys, clses], dim=2)
 
 
@@ -428,7 +428,7 @@ def ddd_decode(heat, rot, depth, dim, wh=None, reg=None, K=40):
     # heat = torch.sigmoid(heat)
     # perform nms on heatmaps
     heat = _nms(heat)
-      
+
     scores, inds, clses, ys, xs = _topk(heat, K=K)
     if reg is not None:
       reg = _tranpose_and_gather_feat(reg, inds)
@@ -438,7 +438,7 @@ def ddd_decode(heat, rot, depth, dim, wh=None, reg=None, K=40):
     else:
       xs = xs.view(batch, K, 1) + 0.5
       ys = ys.view(batch, K, 1) + 0.5
-      
+
     rot = _tranpose_and_gather_feat(rot, inds)
     rot = rot.view(batch, K, 8)
     depth = _tranpose_and_gather_feat(depth, inds)
@@ -449,7 +449,7 @@ def ddd_decode(heat, rot, depth, dim, wh=None, reg=None, K=40):
     scores = scores.view(batch, K, 1)
     xs = xs.view(batch, K, 1)
     ys = ys.view(batch, K, 1)
-      
+
     if wh is not None:
         wh = _tranpose_and_gather_feat(wh, inds)
         wh = wh.view(batch, K, 2)
@@ -458,7 +458,7 @@ def ddd_decode(heat, rot, depth, dim, wh=None, reg=None, K=40):
     else:
         detections = torch.cat(
             [xs, ys, scores, rot, depth, dim, clses], dim=2)
-      
+
     return detections
 
 def ctdet_decode(heat, wh, reg=None, cat_spec_wh=False, K=100):
@@ -467,9 +467,9 @@ def ctdet_decode(heat, wh, reg=None, cat_spec_wh=False, K=100):
     # heat = torch.sigmoid(heat)
     # perform nms on heatmaps
     heat = _nms(heat)
-      
+
     scores, inds, clses, ys, xs = _topk(heat, K=K)
-    if reg is not None:
+    if reg is not None: # this is used
       reg = _tranpose_and_gather_feat(reg, inds)
       reg = reg.view(batch, K, 2)
       xs = xs.view(batch, K, 1) + reg[:, :, 0:1]
@@ -478,7 +478,7 @@ def ctdet_decode(heat, wh, reg=None, cat_spec_wh=False, K=100):
       xs = xs.view(batch, K, 1) + 0.5
       ys = ys.view(batch, K, 1) + 0.5
     wh = _tranpose_and_gather_feat(wh, inds)
-    if cat_spec_wh:
+    if cat_spec_wh: # this is not used the else is used
       wh = wh.view(batch, K, cat, 2)
       clses_ind = clses.view(batch, K, 1, 1).expand(batch, K, 1, 2).long()
       wh = wh.gather(2, clses_ind).view(batch, K, 2)
@@ -486,12 +486,12 @@ def ctdet_decode(heat, wh, reg=None, cat_spec_wh=False, K=100):
       wh = wh.view(batch, K, 2)
     clses  = clses.view(batch, K, 1).float()
     scores = scores.view(batch, K, 1)
-    bboxes = torch.cat([xs - wh[..., 0:1] / 2, 
+    bboxes = torch.cat([xs - wh[..., 0:1] / 2,
                         ys - wh[..., 1:2] / 2,
-                        xs + wh[..., 0:1] / 2, 
+                        xs + wh[..., 0:1] / 2,
                         ys + wh[..., 1:2] / 2], dim=2)
     detections = torch.cat([bboxes, scores, clses], dim=2)
-      
+
     return detections
 
 def multi_pose_decode(
@@ -520,9 +520,9 @@ def multi_pose_decode(
   clses  = clses.view(batch, K, 1).float()
   scores = scores.view(batch, K, 1)
 
-  bboxes = torch.cat([xs - wh[..., 0:1] / 2, 
+  bboxes = torch.cat([xs - wh[..., 0:1] / 2,
                       ys - wh[..., 1:2] / 2,
-                      xs + wh[..., 0:1] / 2, 
+                      xs + wh[..., 0:1] / 2,
                       ys + wh[..., 1:2] / 2], dim=2)
   if hm_hp is not None:
       hm_hp = _nms(hm_hp)
@@ -540,7 +540,7 @@ def multi_pose_decode(
       else:
           hm_xs = hm_xs + 0.5
           hm_ys = hm_ys + 0.5
-        
+
       mask = (hm_score > thresh).float()
       hm_score = (1 - mask) * -1 + mask * hm_score
       hm_ys = (1 - mask) * (-10000) + mask * hm_ys
@@ -567,5 +567,5 @@ def multi_pose_decode(
       kps = kps.permute(0, 2, 1, 3).contiguous().view(
           batch, K, num_joints * 2)
   detections = torch.cat([bboxes, scores, kps, clses], dim=2)
-    
+
   return detections

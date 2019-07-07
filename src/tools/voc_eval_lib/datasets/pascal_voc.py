@@ -266,7 +266,7 @@ class pascal_voc(imdb):
     print('-- Thanks, The Management')
     print('--------------------------------------------------------------')
     '''
-    
+
   def _do_matlab_eval(self, output_dir='output'):
     print('-----------------------------------------------------')
     print('Computing results with the official MATLAB eval code.')
